@@ -459,7 +459,62 @@
             window.location.href = 'login.html';
         }
 
-        // Update transaction functions to use user-specific storage
+        // Initialize transactions array
+        let transactions = getTransactions();
+
+        function addTransaction() {
+            const matchId = document.getElementById('matchId').value;
+            const team1 = document.getElementById('team1').value;
+            const team2 = document.getElementById('team2').value;
+            const transactionDate = document.getElementById('transactionDate').value;
+            const investedAmount = parseFloat(document.getElementById('investedAmount').value);
+            const endingAmount = parseFloat(document.getElementById('endingAmount').value);
+            const type = document.getElementById('type').value;
+
+            // Validation
+            if (!matchId || !team1 || !team2 || !transactionDate || !investedAmount || !endingAmount) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            // Calculate profit/loss
+            const profitLoss = endingAmount - investedAmount;
+
+            // Create transaction object
+            const transaction = {
+                matchId,
+                team1,
+                team2,
+                transactionDate,
+                investedAmount,
+                endingAmount,
+                profitLoss,
+                type
+            };
+
+            // Add to transactions array
+            transactions.push(transaction);
+
+            // Save to localStorage
+            saveTransactions(transactions);
+
+            // Clear form
+            document.getElementById('matchId').value = '';
+            document.getElementById('team1').value = '';
+            document.getElementById('team2').value = '';
+            document.getElementById('transactionDate').value = new Date().toISOString().slice(0, 16);
+            document.getElementById('investedAmount').value = '';
+            document.getElementById('endingAmount').value = '';
+            document.getElementById('type').value = 'bet';
+
+            // Show success message
+            alert('Transaction added successfully!');
+
+            // Update display
+            updateTotalSummary();
+            viewAllTransactions();
+        }
+
         function getTransactions() {
             const currentUser = localStorage.getItem('currentUser');
             return JSON.parse(localStorage.getItem(`transactions_${currentUser}`)) || [];
@@ -476,29 +531,6 @@
 
         function hideLoading() {
             document.getElementById('loading').style.display = 'none';
-        }
-
-        async function addTransaction() {
-            showLoading();
-            try {
-                const user = localStorage.getItem('currentUser');
-                if (!user) return;
-
-                const transaction = {
-                    // ... your transaction data ...
-                    userId: user,
-                    createdAt: new Date()
-                };
-
-                const transactions = getTransactions();
-                transactions.push(transaction);
-                saveTransactions(transactions);
-                showSuccess('Transaction added successfully!');
-                loadTransactions();
-            } catch (error) {
-                hideLoading();
-                showError('Error adding transaction');
-            }
         }
 
         async function loadTransactions() {
@@ -613,7 +645,8 @@
         }
 
         function viewAllTransactions() {
-            displayTransactions(getTransactions());
+            transactions = getTransactions();
+            displayTransactions(transactions);
         }
 
         function deleteTransactionsByMatch() {
@@ -651,10 +684,11 @@
         updateTotalSummary();
 
         function updateTotalSummary() {
-            const transactions = getTransactions();
             let totalInvested = 0;
             let totalEnding = 0;
             let totalProfitLoss = 0;
+            
+            transactions = getTransactions();
             
             transactions.forEach(transaction => {
                 totalInvested += transaction.investedAmount;
