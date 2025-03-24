@@ -122,9 +122,54 @@
             margin-bottom: 15px;
             display: none;
         }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+
+        .loading-content {
+            background: #2a2a2a;
+            padding: 20px 40px;
+            border-radius: 10px;
+            color: #4ECDC4;
+            font-size: 18px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #4ECDC4;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to {transform: rotate(360deg);}
+        }
     </style>
 </head>
 <body>
+    <div id="loading" class="loading">
+        <div class="loading-content">
+            <span class="loading-spinner"></span>
+            Loading...
+        </div>
+    </div>
+
     <div class="register-container">
         <div class="register-header">
             <h1>Create Account</h1>
@@ -162,67 +207,46 @@
     </div>
 
     <script>
-        function register() {
+        function showLoading() {
+            document.getElementById('loading').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        async function register() {
+            showLoading();
             const username = document.getElementById('username').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirm-password').value;
 
-            // Basic validation
-            if (!username || !email || !password || !confirmPassword) {
-                showError('Please fill in all fields');
-                return;
+            try {
+                // Create user in Firebase
+                const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+
+                // Update profile with username
+                await user.updateProfile({
+                    displayName: username
+                });
+
+                // Store user data in Firestore
+                await db.collection('users').doc(user.uid).set({
+                    username,
+                    email,
+                    createdAt: new Date()
+                });
+
+                hideLoading();
+                showSuccess('Registration successful! Redirecting to login...');
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 2000);
+            } catch (error) {
+                hideLoading();
+                showError('Registration failed');
             }
-
-            if (password !== confirmPassword) {
-                showError('Passwords do not match');
-                return;
-            }
-
-            if (password.length < 6) {
-                showError('Password must be at least 6 characters long');
-                return;
-            }
-
-            // Email validation
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                showError('Please enter a valid email address');
-                return;
-            }
-
-            // Get existing users
-            const users = JSON.parse(localStorage.getItem('users')) || [];
-            
-            // Check if username already exists
-            if (users.some(u => u.username === username)) {
-                showError('Username already exists');
-                return;
-            }
-
-            // Check if email already exists
-            if (users.some(u => u.email === email)) {
-                showError('Email already registered');
-                return;
-            }
-
-            // Add new user
-            users.push({
-                username,
-                email,
-                password
-            });
-            localStorage.setItem('users', JSON.stringify(users));
-            
-            // Create user's transaction array
-            localStorage.setItem(`transactions_${username}`, JSON.stringify([]));
-            
-            showSuccess('Registration successful! Redirecting to login...');
-            
-            // Redirect to login page after 2 seconds
-            setTimeout(() => {
-                window.location.href = 'login.html';
-            }, 2000);
         }
 
         function showError(message) {
