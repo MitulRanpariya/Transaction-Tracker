@@ -35,55 +35,9 @@
             transform: none;
             box-shadow: none;
         }
-
-        /* Add this to your existing styles */
-        .loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            display: none;
-        }
-
-        .loading-content {
-            background: #2a2a2a;
-            padding: 20px 40px;
-            border-radius: 10px;
-            color: #4ECDC4;
-            font-size: 18px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #4ECDC4;
-            border-radius: 50%;
-            border-top-color: transparent;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-        }
-
-        @keyframes spin {
-            to {transform: rotate(360deg);}
-        }
     </style>
 </head>
 <body>
-    <div id="loading" class="loading">
-        <div class="loading-content">
-            <span class="loading-spinner"></span>
-            Loading...
-        </div>
-    </div>
-
     <div class="login-container">
         <div class="login-header">
             <h1>Match Transaction Tracker</h1>
@@ -119,11 +73,8 @@
         let isEmailLogin = false;
 
         // Check if user is already logged in
-        window.onload = function() {
-            const currentUser = localStorage.getItem('currentUser');
-            if (currentUser) {
-                window.location.href = 'index.html';
-            }
+        if(localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
         }
 
         function toggleLoginMethod() {
@@ -143,38 +94,24 @@
             }
         }
 
-        function showLoading() {
-            document.getElementById('loading').style.display = 'flex';
-        }
-
-        function hideLoading() {
-            document.getElementById('loading').style.display = 'none';
-        }
-
-        function login() {
+        async function login() {
             const loginId = document.getElementById('loginId').value;
             const password = document.getElementById('password').value;
             
-            if (!loginId || !password) {
-                showError('Please enter both fields');
-                return;
-            }
+            try {
+                // Login with Firebase
+                const userCredential = await firebase.auth().signInWithEmailAndPassword(loginId, password);
+                const user = userCredential.user;
 
-            // Get users from localStorage
-            const users = JSON.parse(localStorage.getItem('users')) || [];
-            
-            // Find user by username or email
-            const user = users.find(u => 
-                (u.username === loginId || u.email === loginId) && 
-                u.password === password
-            );
-            
-            if (user) {
-                localStorage.setItem('currentUser', user.username);
+                // Store user info locally
+                localStorage.setItem('currentUser', user.displayName);
                 localStorage.setItem('currentUserEmail', user.email);
+                localStorage.setItem('userId', user.uid);
+
                 window.location.href = 'index.html';
-            } else {
-                showError('Invalid credentials');
+            } catch (error) {
+                showError('Invalid email or password');
+                console.error(error);
             }
         }
 

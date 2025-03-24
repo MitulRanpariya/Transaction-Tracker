@@ -6,6 +6,7 @@
     <title>Register - Match Transaction Tracker</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <style>
         * {
             margin: 0;
@@ -161,6 +162,11 @@
             to {transform: rotate(360deg);}
         }
     </style>
+    <!-- Add Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
 </head>
 <body>
     <div id="loading" class="loading">
@@ -215,63 +221,55 @@
             document.getElementById('loading').style.display = 'none';
         }
 
-        function register() {
+        async function register() {
+            showLoading();
             const username = document.getElementById('username').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirm-password').value;
 
-            // Validation
-            if (!username || !email || !password || !confirmPassword) {
-                showError('Please fill in all fields');
-                return;
+            try {
+                // Basic validation
+                if (!username || !email || !password || !confirmPassword) {
+                    throw new Error('Please fill in all fields');
+                }
+
+                if (password !== confirmPassword) {
+                    throw new Error('Passwords do not match');
+                }
+
+                // Email validation
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    throw new Error('Please enter a valid email address');
+                }
+
+                // Create user in Firebase
+                const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+
+                // Update profile with username
+                await user.updateProfile({
+                    displayName: username
+                });
+
+                // Store additional user data in Firestore
+                await db.collection('users').doc(user.uid).set({
+                    username: username,
+                    email: email,
+                    createdAt: new Date()
+                });
+
+                showSuccess('Registration successful! Redirecting to login...');
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 2000);
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                hideLoading();
             }
-
-            if (password !== confirmPassword) {
-                showError('Passwords do not match');
-                return;
-            }
-
-            // Email validation
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                showError('Please enter a valid email address');
-                return;
-            }
-
-            // Get existing users
-            const users = JSON.parse(localStorage.getItem('users')) || [];
-            
-            // Check if username or email already exists
-            if (users.some(u => u.username === username)) {
-                showError('Username already exists');
-                return;
-            }
-
-            if (users.some(u => u.email === email)) {
-                showError('Email already registered');
-                return;
-            }
-
-            // Add new user
-            const newUser = {
-                username,
-                email,
-                password,
-                createdAt: new Date().toISOString()
-            };
-
-            users.push(newUser);
-            localStorage.setItem('users', JSON.stringify(users));
-            
-            // Create empty transactions array for user
-            localStorage.setItem(`transactions_${username}`, JSON.stringify([]));
-            
-            showSuccess('Registration successful! Redirecting to login...');
-            
-            setTimeout(() => {
-                window.location.href = 'login.html';
-            }, 2000);
         }
 
         function showError(message) {

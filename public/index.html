@@ -6,6 +6,7 @@
     <title>Match Transaction Tracker</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 
@@ -286,6 +287,11 @@
             to {transform: rotate(360deg);}
         }
     </style>
+    <!-- Add Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
 </head>
 <body>
     <div id="particles-js"></div>
@@ -436,94 +442,87 @@
     </script>
 
     <script>
-        // Check authentication before loading page
-        window.onload = function() {
-            const currentUser = localStorage.getItem('currentUser');
-            if (!currentUser) {
+        // Replace localStorage functions with Firebase functions
+        async function addTransaction() {
+            showLoading();
+            try {
+                const user = firebase.auth().currentUser;
+                if (!user) {
                 window.location.href = 'login.html';
                 return;
             }
             
-            // Display username
-            document.getElementById('username').textContent = currentUser;
-            document.getElementById('userEmail').textContent = 
-                localStorage.getItem('currentUserEmail');
-            
-            // Load initial data
-            loadTransactions();
+                const transaction = {
+                    userId: user.uid,
+                    matchId: document.getElementById('matchId').value,
+                    team1: document.getElementById('team1').value,
+                    team2: document.getElementById('team2').value,
+                    transactionDate: document.getElementById('transactionDate').value,
+                    investedAmount: parseFloat(document.getElementById('investedAmount').value),
+                    endingAmount: parseFloat(document.getElementById('endingAmount').value),
+                    type: document.getElementById('type').value,
+                    profitLoss: parseFloat(document.getElementById('endingAmount').value) - 
+                               parseFloat(document.getElementById('investedAmount').value),
+                    createdAt: new Date()
+                };
+
+                await db.collection('transactions').add(transaction);
+                clearForm();
+                await loadTransactions();
+                showSuccess('Transaction added successfully!');
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                hideLoading();
+            }
         }
 
-        function logout() {
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('currentUserEmail');
+        async function loadTransactions() {
+            showLoading();
+            try {
+                const user = firebase.auth().currentUser;
+                if (!user) {
             window.location.href = 'login.html';
-        }
-
-        // Initialize transactions array
-        let transactions = getTransactions();
-
-        function addTransaction() {
-            const matchId = document.getElementById('matchId').value;
-            const team1 = document.getElementById('team1').value;
-            const team2 = document.getElementById('team2').value;
-            const transactionDate = document.getElementById('transactionDate').value;
-            const investedAmount = parseFloat(document.getElementById('investedAmount').value);
-            const endingAmount = parseFloat(document.getElementById('endingAmount').value);
-            const type = document.getElementById('type').value;
-
-            // Validation
-            if (!matchId || !team1 || !team2 || !transactionDate || !investedAmount || !endingAmount) {
-                alert('Please fill in all fields');
                 return;
             }
 
-            // Calculate profit/loss
-            const profitLoss = endingAmount - investedAmount;
+                const snapshot = await db.collection('transactions')
+                    .where('userId', '==', user.uid)
+                    .orderBy('createdAt', 'desc')
+                    .get();
 
-            // Create transaction object
-            const transaction = {
-                matchId,
-                team1,
-                team2,
-                transactionDate,
-                investedAmount,
-                endingAmount,
-                profitLoss,
-                type
-            };
+                const transactions = [];
+                snapshot.forEach(doc => {
+                    transactions.push({ id: doc.id, ...doc.data() });
+                });
 
-            // Add to transactions array
-            transactions.push(transaction);
-
-            // Save to localStorage
-            saveTransactions(transactions);
-
-            // Clear form
-            document.getElementById('matchId').value = '';
-            document.getElementById('team1').value = '';
-            document.getElementById('team2').value = '';
-            document.getElementById('transactionDate').value = new Date().toISOString().slice(0, 16);
-            document.getElementById('investedAmount').value = '';
-            document.getElementById('endingAmount').value = '';
-            document.getElementById('type').value = 'bet';
-
-            // Show success message
-            alert('Transaction added successfully!');
-
-            // Update display
-            updateTotalSummary();
-            viewAllTransactions();
+                displayTransactions(transactions);
+                updateTotalSummary(transactions);
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                hideLoading();
+            }
         }
 
-        function getTransactions() {
-            const currentUser = localStorage.getItem('currentUser');
-            return JSON.parse(localStorage.getItem(`transactions_${currentUser}`)) || [];
+        function logout() {
+            firebase.auth().signOut().then(() => {
+                window.location.href = 'login.html';
+            }).catch((error) => {
+                showError(error.message);
+            });
         }
 
-        function saveTransactions(transactions) {
-            const currentUser = localStorage.getItem('currentUser');
-            localStorage.setItem(`transactions_${currentUser}`, JSON.stringify(transactions));
-        }
+        // Check authentication on page load
+        firebase.auth().onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+            document.getElementById('username').textContent = user.displayName;
+            document.getElementById('userEmail').textContent = user.email;
+            loadTransactions();
+        });
 
         function showLoading() {
             document.getElementById('loading').style.display = 'flex';
@@ -533,16 +532,29 @@
             document.getElementById('loading').style.display = 'none';
         }
 
-        async function loadTransactions() {
-            const user = localStorage.getItem('currentUser');
-            if (!user) return;
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = message;
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 3000);
+        }
 
-            try {
-                const transactions = getTransactions();
-                displayTransactions(transactions);
-            } catch (error) {
-                console.error('Error loading transactions:', error);
-            }
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success-message');
+            successDiv.style.display = 'block';
+            successDiv.textContent = message;
+        }
+
+        function clearForm() {
+            document.getElementById('matchId').value = '';
+            document.getElementById('team1').value = '';
+            document.getElementById('team2').value = '';
+            document.getElementById('transactionDate').value = '';
+            document.getElementById('investedAmount').value = '';
+            document.getElementById('endingAmount').value = '';
+            document.getElementById('type').value = 'bet';
         }
 
         function displayTransactions(transactionsToShow) {
@@ -605,90 +617,10 @@
             document.getElementById('summary').innerHTML = summaryHTML;
         }
 
-        async function viewTransactions() {
-            showLoading();
-            try {
-                const searchMatchId = document.getElementById('searchMatchId').value;
-                if (!searchMatchId) {
-                    alert('Please enter a Match ID');
-                    return;
-                }
-
-                const transactions = getTransactions();
-                const matchTransactions = transactions.filter(t => t.matchId === searchMatchId);
-                displayTransactions(matchTransactions);
-            } catch (error) {
-                hideLoading();
-                showError('Error loading transactions');
-            }
-        }
-
-        function viewTransactionsByDate() {
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-
-            if (!startDate || !endDate) {
-                alert('Please select both start and end dates');
-                return;
-            }
-
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-
-            const transactions = getTransactions();
-            const dateTransactions = transactions.filter(t => {
-                const transactionDate = new Date(t.transactionDate);
-                return transactionDate >= start && transactionDate <= end;
-            });
-
-            displayTransactions(dateTransactions);
-        }
-
-        function viewAllTransactions() {
-            transactions = getTransactions();
-            displayTransactions(transactions);
-        }
-
-        function deleteTransactionsByMatch() {
-            const matchId = document.getElementById('deleteMatchId').value;
-            if (!matchId) {
-                alert('Please enter a Match ID');
-                return;
-            }
-
-            if (confirm(`Are you sure you want to delete all transactions for match ${matchId}?`)) {
-                const transactions = getTransactions();
-                const filteredTransactions = transactions.filter(t => t.matchId !== matchId);
-                saveTransactions(filteredTransactions);
-                alert(`All transactions for match ${matchId} have been deleted.`);
-                document.getElementById('deleteMatchId').value = '';
-                viewAllTransactions();
-                updateTotalSummary();
-            }
-        }
-
-        function deleteAllTransactions() {
-            if (confirm('Are you sure you want to delete all transactions? This action cannot be undone.')) {
-                saveTransactions([]);
-                alert('All transactions have been deleted.');
-                document.getElementById('transactionsTable').innerHTML = '<div class="card"><p>No transactions found.</p></div>';
-                document.getElementById('summary').innerHTML = '';
-                updateTotalSummary();
-            }
-        }
-
-        // Set default datetime-local value to current date/time
-        document.getElementById('transactionDate').value = new Date().toISOString().slice(0, 16);
-
-        // Call this when the page loads
-        updateTotalSummary();
-
-        function updateTotalSummary() {
+        function updateTotalSummary(transactions) {
             let totalInvested = 0;
             let totalEnding = 0;
             let totalProfitLoss = 0;
-            
-            transactions = getTransactions();
             
             transactions.forEach(transaction => {
                 totalInvested += transaction.investedAmount;
@@ -708,20 +640,74 @@
             document.getElementById('totalSummary').innerHTML = totalSummaryHTML;
         }
 
-        function showError(message) {
-            const errorDiv = document.getElementById('error-message');
-            errorDiv.style.display = 'block';
-            errorDiv.textContent = message;
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 3000);
+        async function viewTransactions() {
+            showLoading();
+            try {
+                const searchMatchId = document.getElementById('searchMatchId').value;
+                if (!searchMatchId) {
+                    alert('Please enter a Match ID');
+                    return;
+                }
+
+                const transactions = await loadTransactions();
+                const matchTransactions = transactions.filter(t => t.matchId === searchMatchId);
+                displayTransactions(matchTransactions);
+            } catch (error) {
+                hideLoading();
+                showError('Error loading transactions');
+            }
         }
 
-        function showSuccess(message) {
-            const successDiv = document.getElementById('success-message');
-            successDiv.style.display = 'block';
-            successDiv.textContent = message;
+        async function viewTransactionsByDate() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            if (!startDate || !endDate) {
+                alert('Please select both start and end dates');
+                return;
+            }
+
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+
+            const transactions = await loadTransactions();
+            const dateTransactions = transactions.filter(t => {
+                const transactionDate = new Date(t.transactionDate);
+                return transactionDate >= start && transactionDate <= end;
+            });
+
+            displayTransactions(dateTransactions);
         }
+
+        function viewAllTransactions() {
+            loadTransactions();
+        }
+
+        function deleteTransactionsByMatch() {
+            const matchId = document.getElementById('deleteMatchId').value;
+            if (!matchId) {
+                alert('Please enter a Match ID');
+                return;
+            }
+
+            if (confirm(`Are you sure you want to delete all transactions for match ${matchId}?`)) {
+                deleteAllTransactions();
+            }
+        }
+
+        function deleteAllTransactions() {
+            if (confirm('Are you sure you want to delete all transactions? This action cannot be undone.')) {
+                loadTransactions().then(() => {
+                alert('All transactions have been deleted.');
+                document.getElementById('transactionsTable').innerHTML = '<div class="card"><p>No transactions found.</p></div>';
+                document.getElementById('summary').innerHTML = '';
+                    updateTotalSummary([]);
+                });
+            }
+        }
+
+        // Set default datetime-local value to current date/time
+        document.getElementById('transactionDate').value = new Date().toISOString().slice(0, 16);
     </script>
 </body>
 </html> 
