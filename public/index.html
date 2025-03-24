@@ -11,6 +11,24 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="js/firebase-config.js"></script>
 
+    <!-- Initialize Firestore -->
+    <script>
+        // Initialize Firestore
+        const db = firebase.firestore();
+        
+        // Enable offline persistence
+        db.enablePersistence()
+            .catch((err) => {
+                if (err.code === 'failed-precondition') {
+                    // Multiple tabs open, persistence can only be enabled in one tab at a time.
+                    console.log('Multiple tabs open, persistence disabled');
+                } else if (err.code === 'unimplemented') {
+                    // The current browser doesn't support persistence
+                    console.log('Browser doesn\'t support persistence');
+                }
+            });
+    </script>
+
     <!-- Styles -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -484,7 +502,7 @@
                     createdAt: new Date()
                 };
 
-                await firebase.firestore().collection('transactions').add(transaction);
+                await db.collection('transactions').add(transaction);
                 clearForm();
                 showSuccess('Transaction added successfully!');
                 loadTransactions();
@@ -504,39 +522,27 @@
                     return;
                 }
 
-                // Try to fetch transactions
-                try {
-                    const snapshot = await firebase.firestore().collection('transactions')
-                        .where('userId', '==', user.uid)
-                        .orderBy('createdAt', 'desc')
-                        .get();
+                const snapshot = await db.collection('transactions')
+                    .where('userId', '==', user.uid)
+                    .orderBy('createdAt', 'desc')
+                    .get();
 
-                    const transactions = [];
-                    snapshot.forEach(doc => {
-                        transactions.push({ id: doc.id, ...doc.data() });
-                    });
+                const transactions = [];
+                snapshot.forEach(doc => {
+                    transactions.push({ id: doc.id, ...doc.data() });
+                });
 
-                    displayTransactions(transactions);
-                    updateTotalSummary(transactions);
-                } catch (error) {
-                    if (error.code === 'failed-precondition') {
-                        // Show error with the direct link
-                        const errorMessage = error.message;
-                        const indexLink = errorMessage.match(/https:\/\/console\.firebase\.google\.com[^\s]*/);
-                        if (indexLink) {
-                            showError(`Click this link to create the required index: ${indexLink[0]}`);
-                            // Open the link in a new tab
-                            window.open(indexLink[0], '_blank');
-                        } else {
-                            showError('Error loading transactions. Please try again.');
-                        }
-                    } else {
-                        throw error;
-                    }
-                }
+                displayTransactions(transactions);
+                updateTotalSummary(transactions);
             } catch (error) {
-                console.error('Error:', error);
-                showError(error.message);
+                console.error('Error loading transactions:', error);
+                if (error.code === 'failed-precondition') {
+                    showError('Error loading transactions. Please try again.');
+                } else if (error.code === 'permission-denied') {
+                    showError('You do not have permission to view transactions.');
+                } else {
+                    showError('Error loading transactions: ' + error.message);
+                }
             } finally {
                 hideLoading();
             }
@@ -552,9 +558,15 @@
                 }
 
                 const user = firebase.auth().currentUser;
-                const snapshot = await firebase.firestore().collection('transactions')
+                if (!user) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                const snapshot = await db.collection('transactions')
                     .where('userId', '==', user.uid)
                     .where('matchId', '==', searchMatchId)
+                    .orderBy('createdAt', 'desc')
                     .get();
 
                 const transactions = [];
@@ -563,8 +575,14 @@
                 });
 
                 displayTransactions(transactions);
+                updateTotalSummary(transactions);
             } catch (error) {
-                showError('Error loading transactions: ' + error.message);
+                console.error('Error viewing transactions:', error);
+                if (error.code === 'permission-denied') {
+                    showError('You do not have permission to view transactions.');
+                } else {
+                    showError('Error loading transactions: ' + error.message);
+                }
             } finally {
                 hideLoading();
             }
@@ -582,11 +600,16 @@
                 }
 
                 const user = firebase.auth().currentUser;
-                const snapshot = await firebase.firestore().collection('transactions')
+                if (!user) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                const snapshot = await db.collection('transactions')
                     .where('userId', '==', user.uid)
-                    .orderBy('transactionDate')
-                    .startAt(startDate)
-                    .endAt(endDate)
+                    .where('transactionDate', '>=', startDate)
+                    .where('transactionDate', '<=', endDate)
+                    .orderBy('transactionDate', 'desc')
                     .get();
 
                 const transactions = [];
@@ -595,8 +618,14 @@
                 });
 
                 displayTransactions(transactions);
+                updateTotalSummary(transactions);
             } catch (error) {
-                showError('Error loading transactions: ' + error.message);
+                console.error('Error viewing transactions by date:', error);
+                if (error.code === 'permission-denied') {
+                    showError('You do not have permission to view transactions.');
+                } else {
+                    showError('Error loading transactions: ' + error.message);
+                }
             } finally {
                 hideLoading();
             }
@@ -660,7 +689,6 @@
                 </div>
             `;
             document.getElementById('summary').innerHTML = summaryHTML;
-            updateTotalSummary(transactionsToShow);
         }
 
         function updateTotalSummary(transactions) {
@@ -709,12 +737,12 @@
                 showLoading();
                 try {
                     const user = firebase.auth().currentUser;
-                    const snapshot = await firebase.firestore().collection('transactions')
+                    const snapshot = await db.collection('transactions')
                         .where('userId', '==', user.uid)
                         .where('matchId', '==', matchId)
                         .get();
 
-                    const batch = firebase.firestore().batch();
+                    const batch = db.batch();
                     snapshot.forEach(doc => {
                         batch.delete(doc.ref);
                     });
@@ -736,11 +764,11 @@
                 showLoading();
                 try {
                     const user = firebase.auth().currentUser;
-                    const snapshot = await firebase.firestore().collection('transactions')
+                    const snapshot = await db.collection('transactions')
                         .where('userId', '==', user.uid)
                         .get();
 
-                    const batch = firebase.firestore().batch();
+                    const batch = db.batch();
                     snapshot.forEach(doc => {
                         batch.delete(doc.ref);
                     });
