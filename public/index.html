@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match Transaction Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            background: #1a1a1a;  /* Dark background */
+            color: #fff;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #4ECDC4;  /* Bright accent color */
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 0 0 10px rgba(78, 205, 196, 0.3);
+        }
+
+        h2 {
+            color: #4ECDC4;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: #2a2a2a;  /* Slightly lighter than background */
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border: 1px solid #3a3a3a;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #fff;
+            font-weight: 500;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4ECDC4;
+            box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.2);
+        }
+
+        button {
+            background: #4ECDC4;
+            color: #1a1a1a;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background: #45b1aa;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(78, 205, 196, 0.3);
+        }
+
+        .delete-btn {
+            background: #FF6B6B;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background: #ff5252;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 20px;
+            background: #2a2a2a;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+
+        th {
+            background: #333;
+            font-weight: 600;
+            color: #4ECDC4;
+        }
+
+        tr:hover {
+            background: #333;
+        }
+
+        .profit {
+            color: #96C93D;
+            font-weight: 600;
+        }
+
+        .loss {
+            color: #FF6B6B;
+            font-weight: 600;
+        }
+
+        .date-range {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .date-range input {
+            width: 48%;
+        }
+
+        .summary-box {
+            background: linear-gradient(145deg, #2a2a2a, #333);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-top: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            border: 1px solid #3a3a3a;
+        }
+
+        .summary-box h3 {
+            margin-bottom: 15px;
+            font-size: 1.4em;
+            color: #4ECDC4;
+        }
+
+        .summary-box p {
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            color: #fff;
+        }
+
+        .delete-section {
+            background: #fff5f5;
+            border: 1px solid #ffcdd2;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 25px;
+        }
+
+        .delete-section h2 {
+            color: #dc3545;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title i {
+            margin-right: 10px;
+            color: #4ECDC4;
+            font-size: 1.2em;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .date-range {
+                flex-direction: column;
+            }
+            
+            .date-range input {
+                width: 100%;
+            }
+            
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+            
+            button {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="particles-js"></div>
+    <div class="container">
+        <h1>Match Transaction Tracker</h1>
+        
+        <div style="text-align: right; margin-bottom: 20px;">
+            <div style="margin-bottom: 10px;">
+                <span style="color: #4ECDC4;">Welcome, <span id="username"></span></span>
+                <br>
+                <span style="color: #888; font-size: 0.9em;"><span id="userEmail"></span></span>
+            </div>
+            <button onclick="logout()" style="background: #FF6B6B;">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+        
+        <div class="card total-summary">
+            <div class="section-title">
+                <i class="fas fa-calculator"></i>
+                <h2>Overall Performance</h2>
+            </div>
+            <div id="totalSummary"></div>
+        </div>
+        
+        <div class="card">
+            <div class="section-title">
+                <i class="fas fa-plus-circle"></i>
+                <h2>Add New Transaction</h2>
+            </div>
+            <label for="matchId">Match ID:</label>
+            <input type="text" id="matchId" required placeholder="Enter match ID">
+            
+            <div style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label for="team1">Team 1:</label>
+                    <input type="text" id="team1" required placeholder="Enter first team name">
+                </div>
+                <div style="flex: 1;">
+                    <label for="team2">Team 2:</label>
+                    <input type="text" id="team2" required placeholder="Enter second team name">
+                </div>
+            </div>
+            
+            <label for="transactionDate">Transaction Date:</label>
+            <input type="datetime-local" id="transactionDate" required>
+            
+            <label for="investedAmount">Invested Amount:</label>
+            <input type="number" id="investedAmount" step="0.01" required placeholder="Enter invested amount">
+            
+            <label for="endingAmount">Ending Amount:</label>
+            <input type="number" id="endingAmount" step="0.01" required placeholder="Enter ending amount">
+            
+            <label for="type">Transaction Type:</label>
+            <select id="type" required>
+                <option value="bet">Bet</option>
+                <option value="win">Win</option>
+            </select>
+            
+            <button onclick="addTransaction()"><i class="fas fa-plus"></i> Add Transaction</button>
+        </div>
+
+        <div class="card">
+            <div class="section-title">
+                <i class="fas fa-search"></i>
+                <h2>View Transactions</h2>
+            </div>
+            <div>
+                <label for="searchMatchId">Enter Match ID to view transactions:</label>
+                <input type="text" id="searchMatchId" placeholder="Enter match ID">
+                <button onclick="viewTransactions()"><i class="fas fa-search"></i> View by Match</button>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <label>View by Date Range:</label>
+                <div class="date-range">
+                    <input type="datetime-local" id="startDate">
+                    <input type="datetime-local" id="endDate">
+                </div>
+                <button onclick="viewTransactionsByDate()"><i class="fas fa-calendar"></i> View by Date Range</button>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button onclick="viewAllTransactions()"><i class="fas fa-list"></i> View All Transactions</button>
+            </div>
+        </div>
+
+        <div class="delete-section">
+            <div class="section-title">
+                <i class="fas fa-trash-alt"></i>
+                <h2>Delete Transactions</h2>
+            </div>
+            <div>
+                <label for="deleteMatchId">Enter Match ID to delete transactions:</label>
+                <input type="text" id="deleteMatchId" placeholder="Enter match ID">
+                <button class="delete-btn" onclick="deleteTransactionsByMatch()"><i class="fas fa-trash"></i> Delete by Match</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <button class="delete-btn" onclick="deleteAllTransactions()"><i class="fas fa-trash-alt"></i> Delete All Transactions</button>
+            </div>
+        </div>
+
+        <div id="transactionsTable"></div>
+        <div id="summary"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        particlesJS("particles-js", {
+            particles: {
+                number: { value: 80, density: { enable: true, value_area: 800 } },
+                color: { value: "#ffffff" },
+                opacity: { value: 0.2 },
+                size: { value: 3 },
+                line_linked: {
+                    enable: true,
+                    distance: 150,
+                    color: "#ffffff",
+                    opacity: 0.1,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 2,
+                    direction: "none",
+                    random: false,
+                    straight: false,
+                    out_mode: "out",
+                    bounce: false,
+                }
+            },
+            interactivity: {
+                detect_on: "canvas",
+                events: {
+                    onhover: { enable: true, mode: "repulse" },
+                    onclick: { enable: true, mode: "push" },
+                    resize: true
+                }
+            },
+            retina_detect: true
+        });
+    </script>
+
+    <script>
+        // Display user info
+        const currentUser = localStorage.getItem('currentUser');
+        const currentUserEmail = localStorage.getItem('currentUserEmail');
+        
+        if (!currentUser) {
+            window.location.href = 'login.html';
+        }
+
+        document.getElementById('username').textContent = currentUser;
+        document.getElementById('userEmail').textContent = currentUserEmail;
+
+        // Modify how transactions are stored/retrieved
+        function getTransactions() {
+            return JSON.parse(localStorage.getItem(`transactions_${currentUser}`)) || [];
+        }
+
+        function saveTransactions(transactions) {
+            localStorage.setItem(`transactions_${currentUser}`, JSON.stringify(transactions));
+        }
+
+        // Update your existing functions to use the new storage methods
+        let transactions = getTransactions();
+
+        function updateTotalSummary() {
+            let totalInvested = 0;
+            let totalEnding = 0;
+            let totalProfitLoss = 0;
+            
+            transactions.forEach(transaction => {
+                totalInvested += transaction.investedAmount;
+                totalEnding += transaction.endingAmount;
+                totalProfitLoss += transaction.profitLoss;
+            });
+
+            const totalSummaryHTML = `
+                <div class="summary-box">
+                    <h3><i class="fas fa-chart-bar"></i> Overall Statistics</h3>
+                    <p><i class="fas fa-wallet"></i> Total Invested: ${totalInvested.toFixed(2)}</p>
+                    <p><i class="fas fa-money-bill-wave"></i> Total Returns: ${totalEnding.toFixed(2)}</p>
+                    <p><i class="fas fa-chart-line"></i> Net Profit/Loss: <span class="${totalProfitLoss >= 0 ? 'profit' : 'loss'}">${totalProfitLoss.toFixed(2)}</span></p>
+                    <p><i class="fas fa-percentage"></i> ROI: <span class="${totalProfitLoss >= 0 ? 'profit' : 'loss'}">${((totalProfitLoss/totalInvested) * 100).toFixed(2)}%</span></p>
+                </div>
+            `;
+            document.getElementById('totalSummary').innerHTML = totalSummaryHTML;
+        }
+
+        function addTransaction() {
+            const matchId = document.getElementById('matchId').value;
+            const team1 = document.getElementById('team1').value;
+            const team2 = document.getElementById('team2').value;
+            const transactionDate = document.getElementById('transactionDate').value;
+            const investedAmount = parseFloat(document.getElementById('investedAmount').value);
+            const endingAmount = parseFloat(document.getElementById('endingAmount').value);
+            const type = document.getElementById('type').value;
+
+            if (!matchId || !team1 || !team2 || !transactionDate || !investedAmount || !endingAmount || !type) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            const profitLoss = endingAmount - investedAmount;
+            const transaction = {
+                matchId,
+                team1,
+                team2,
+                transactionDate,
+                investedAmount,
+                endingAmount,
+                profitLoss,
+                type
+            };
+
+            transactions.push(transaction);
+            saveTransactions(transactions);
+            
+            // Clear form
+            document.getElementById('matchId').value = '';
+            document.getElementById('team1').value = '';
+            document.getElementById('team2').value = '';
+            document.getElementById('transactionDate').value = '';
+            document.getElementById('investedAmount').value = '';
+            document.getElementById('endingAmount').value = '';
+            document.getElementById('type').value = 'bet';
+            
+            alert('Transaction added successfully!');
+            updateTotalSummary();
+        }
+
+        function displayTransactions(transactionsToShow) {
+            if (transactionsToShow.length === 0) {
+                document.getElementById('transactionsTable').innerHTML = '<div class="card"><p>No transactions found.</p></div>';
+                document.getElementById('summary').innerHTML = '';
+                return;
+            }
+
+            // Create table
+            let tableHTML = `
+                <div class="card">
+                    <table>
+                        <tr>
+                            <th>Date</th>
+                            <th>Match ID</th>
+                            <th>Teams</th>
+                            <th>Type</th>
+                            <th>Invested Amount</th>
+                            <th>Ending Amount</th>
+                            <th>Profit/Loss</th>
+                        </tr>
+            `;
+
+            let totalInvested = 0;
+            let totalEnding = 0;
+            let totalProfitLoss = 0;
+
+            transactionsToShow.forEach(transaction => {
+                totalInvested += transaction.investedAmount;
+                totalEnding += transaction.endingAmount;
+                totalProfitLoss += transaction.profitLoss;
+                
+                tableHTML += `
+                    <tr>
+                        <td>${new Date(transaction.transactionDate).toLocaleString()}</td>
+                        <td>${transaction.matchId}</td>
+                        <td>${transaction.team1} vs ${transaction.team2}</td>
+                        <td>${transaction.type}</td>
+                        <td>${transaction.investedAmount.toFixed(2)}</td>
+                        <td>${transaction.endingAmount.toFixed(2)}</td>
+                        <td class="${transaction.profitLoss >= 0 ? 'profit' : 'loss'}">${transaction.profitLoss.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</table></div>';
+            document.getElementById('transactionsTable').innerHTML = tableHTML;
+
+            // Show summary
+            const summaryHTML = `
+                <div class="summary-box">
+                    <h3><i class="fas fa-chart-pie"></i> Summary</h3>
+                    <p><i class="fas fa-wallet"></i> Total Invested Amount: ${totalInvested.toFixed(2)}</p>
+                    <p><i class="fas fa-money-bill-wave"></i> Total Ending Amount: ${totalEnding.toFixed(2)}</p>
+                    <p><i class="fas fa-chart-line"></i> Total Profit/Loss: <span class="${totalProfitLoss >= 0 ? 'profit' : 'loss'}">${totalProfitLoss.toFixed(2)}</span></p>
+                    <p><i class="fas fa-list"></i> Number of Transactions: ${transactionsToShow.length}</p>
+                </div>
+            `;
+            document.getElementById('summary').innerHTML = summaryHTML;
+        }
+
+        function viewTransactions() {
+            const searchMatchId = document.getElementById('searchMatchId').value;
+            if (!searchMatchId) {
+                alert('Please enter a Match ID');
+                return;
+            }
+
+            const matchTransactions = transactions.filter(t => t.matchId === searchMatchId);
+            displayTransactions(matchTransactions);
+        }
+
+        function viewTransactionsByDate() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            if (!startDate || !endDate) {
+                alert('Please select both start and end dates');
+                return;
+            }
+
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+
+            const dateTransactions = transactions.filter(t => {
+                const transactionDate = new Date(t.transactionDate);
+                return transactionDate >= start && transactionDate <= end;
+            });
+
+            displayTransactions(dateTransactions);
+        }
+
+        function viewAllTransactions() {
+            displayTransactions(transactions);
+        }
+
+        function deleteTransactionsByMatch() {
+            const matchId = document.getElementById('deleteMatchId').value;
+            if (!matchId) {
+                alert('Please enter a Match ID');
+                return;
+            }
+
+            if (confirm(`Are you sure you want to delete all transactions for match ${matchId}?`)) {
+                transactions = transactions.filter(t => t.matchId !== matchId);
+                saveTransactions(transactions);
+                alert(`All transactions for match ${matchId} have been deleted.`);
+                document.getElementById('deleteMatchId').value = '';
+                viewAllTransactions();
+                updateTotalSummary();
+            }
+        }
+
+        function deleteAllTransactions() {
+            if (confirm('Are you sure you want to delete all transactions? This action cannot be undone.')) {
+                transactions = [];
+                saveTransactions(transactions);
+                alert('All transactions have been deleted.');
+                document.getElementById('transactionsTable').innerHTML = '<div class="card"><p>No transactions found.</p></div>';
+                document.getElementById('summary').innerHTML = '';
+                updateTotalSummary();
+            }
+        }
+
+        // Set default datetime-local value to current date/time
+        document.getElementById('transactionDate').value = new Date().toISOString().slice(0, 16);
+
+        // Call this when the page loads
+        updateTotalSummary();
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('currentUserEmail');
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html> 

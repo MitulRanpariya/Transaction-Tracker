@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Match Transaction Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* ... existing styles ... */
+
+        /* Add this new style for the toggle button */
+        .toggle-login {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .toggle-login button {
+            background: transparent;
+            border: none;
+            color: #4ECDC4;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 14px;
+            padding: 5px 10px;
+        }
+
+        .toggle-login button:hover {
+            color: #45b1aa;
+            transform: none;
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>Match Transaction Tracker</h1>
+            <p>Please login to continue</p>
+        </div>
+        
+        <div id="error-message" class="error-message"></div>
+
+        <div class="toggle-login">
+            <button onclick="toggleLoginMethod()" id="toggleBtn">
+                Login with Email Instead
+            </button>
+        </div>
+        
+        <div class="input-group">
+            <label for="loginId" id="loginLabel">Username</label>
+            <input type="text" id="loginId" placeholder="Enter username or email">
+        </div>
+        
+        <div class="input-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Enter your password">
+        </div>
+        
+        <button onclick="login()">Login</button>
+        
+        <div class="register-link">
+            <p>Don't have an account? <a href="register.html">Register</a></p>
+        </div>
+    </div>
+
+    <script>
+        let isEmailLogin = false;
+
+        // Check if user is already logged in
+        if(localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+
+        function toggleLoginMethod() {
+            isEmailLogin = !isEmailLogin;
+            const loginLabel = document.getElementById('loginLabel');
+            const loginInput = document.getElementById('loginId');
+            const toggleBtn = document.getElementById('toggleBtn');
+
+            if (isEmailLogin) {
+                loginLabel.textContent = 'Email';
+                loginInput.placeholder = 'Enter your email';
+                toggleBtn.textContent = 'Login with Username Instead';
+            } else {
+                loginLabel.textContent = 'Username';
+                loginInput.placeholder = 'Enter username';
+                toggleBtn.textContent = 'Login with Email Instead';
+            }
+        }
+
+        function login() {
+            const loginId = document.getElementById('loginId').value;
+            const password = document.getElementById('password').value;
+            
+            if (!loginId || !password) {
+                showError('Please enter both ' + (isEmailLogin ? 'email' : 'username') + ' and password');
+                return;
+            }
+
+            // Get users from localStorage
+            const users = JSON.parse(localStorage.getItem('users')) || [];
+            
+            // Find user based on login method
+            const user = users.find(u => {
+                if (isEmailLogin) {
+                    return u.email === loginId && u.password === password;
+                } else {
+                    return u.username === loginId && u.password === password;
+                }
+            });
+            
+            if (user) {
+                // Store current user
+                localStorage.setItem('currentUser', user.username);
+                localStorage.setItem('currentUserEmail', user.email);
+                window.location.href = 'index.html';
+            } else {
+                showError('Invalid ' + (isEmailLogin ? 'email' : 'username') + ' or password');
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = message;
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // Add event listener for Enter key
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+    </script>
+</body>
+</html>
