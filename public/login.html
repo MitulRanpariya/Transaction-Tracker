@@ -119,8 +119,11 @@
         let isEmailLogin = false;
 
         // Check if user is already logged in
-        if(localStorage.getItem('currentUser')) {
-            window.location.href = 'index.html';
+        window.onload = function() {
+            const currentUser = localStorage.getItem('currentUser');
+            if (currentUser) {
+                window.location.href = 'index.html';
+            }
         }
 
         function toggleLoginMethod() {
@@ -148,32 +151,30 @@
             document.getElementById('loading').style.display = 'none';
         }
 
-        async function login() {
-            showLoading();
-            try {
-                const loginId = document.getElementById('loginId').value;
-                const password = document.getElementById('password').value;
-                
-                if (!loginId || !password) {
-                    hideLoading();
-                    showError('Please enter both ' + (isEmailLogin ? 'email' : 'username') + ' and password');
-                    return;
-                }
+        function login() {
+            const loginId = document.getElementById('loginId').value;
+            const password = document.getElementById('password').value;
+            
+            if (!loginId || !password) {
+                showError('Please enter both fields');
+                return;
+            }
 
-                // Login with Firebase
-                const userCredential = await firebase.auth().signInWithEmailAndPassword(loginId, password);
-                const user = userCredential.user;
-
-                // Store user info locally
-                localStorage.setItem('currentUser', user.displayName);
+            // Get users from localStorage
+            const users = JSON.parse(localStorage.getItem('users')) || [];
+            
+            // Find user by username or email
+            const user = users.find(u => 
+                (u.username === loginId || u.email === loginId) && 
+                u.password === password
+            );
+            
+            if (user) {
+                localStorage.setItem('currentUser', user.username);
                 localStorage.setItem('currentUserEmail', user.email);
-                localStorage.setItem('userId', user.uid);
-
-                hideLoading();
                 window.location.href = 'index.html';
-            } catch (error) {
-                hideLoading();
-                showError('Login failed. Please try again.');
+            } else {
+                showError('Invalid credentials');
             }
         }
 

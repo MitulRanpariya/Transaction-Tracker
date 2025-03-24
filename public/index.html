@@ -436,17 +436,39 @@
     </script>
 
     <script>
-        // Check authentication
-        firebase.auth().onAuthStateChanged(function(user) {
-            if (!user) {
+        // Check authentication before loading page
+        window.onload = function() {
+            const currentUser = localStorage.getItem('currentUser');
+            if (!currentUser) {
                 window.location.href = 'login.html';
                 return;
             }
+            
+            // Display username
+            document.getElementById('username').textContent = currentUser;
+            document.getElementById('userEmail').textContent = 
+                localStorage.getItem('currentUserEmail');
+            
+            // Load initial data
+            loadTransactions();
+        }
 
-            // Display user info
-            document.getElementById('username').textContent = user.displayName;
-            document.getElementById('userEmail').textContent = user.email;
-        });
+        function logout() {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('currentUserEmail');
+            window.location.href = 'login.html';
+        }
+
+        // Update transaction functions to use user-specific storage
+        function getTransactions() {
+            const currentUser = localStorage.getItem('currentUser');
+            return JSON.parse(localStorage.getItem(`transactions_${currentUser}`)) || [];
+        }
+
+        function saveTransactions(transactions) {
+            const currentUser = localStorage.getItem('currentUser');
+            localStorage.setItem(`transactions_${currentUser}`, JSON.stringify(transactions));
+        }
 
         function showLoading() {
             document.getElementById('loading').style.display = 'flex';
@@ -459,16 +481,18 @@
         async function addTransaction() {
             showLoading();
             try {
-                const user = firebase.auth().currentUser;
+                const user = localStorage.getItem('currentUser');
                 if (!user) return;
 
                 const transaction = {
                     // ... your transaction data ...
-                    userId: user.uid,
+                    userId: user,
                     createdAt: new Date()
                 };
 
-                await db.collection('transactions').add(transaction);
+                const transactions = getTransactions();
+                transactions.push(transaction);
+                saveTransactions(transactions);
                 showSuccess('Transaction added successfully!');
                 loadTransactions();
             } catch (error) {
@@ -478,59 +502,15 @@
         }
 
         async function loadTransactions() {
-            const user = firebase.auth().currentUser;
+            const user = localStorage.getItem('currentUser');
             if (!user) return;
 
             try {
-                const snapshot = await db.collection('transactions')
-                    .where('userId', '==', user.uid)
-                    .orderBy('createdAt', 'desc')
-                    .get();
-
-                const transactions = [];
-                snapshot.forEach(doc => {
-                    transactions.push({ id: doc.id, ...doc.data() });
-                });
-
+                const transactions = getTransactions();
                 displayTransactions(transactions);
             } catch (error) {
                 console.error('Error loading transactions:', error);
             }
-        }
-
-        // Modify how transactions are stored/retrieved
-        function getTransactions() {
-            return JSON.parse(localStorage.getItem(`transactions_${currentUser}`)) || [];
-        }
-
-        function saveTransactions(transactions) {
-            localStorage.setItem(`transactions_${currentUser}`, JSON.stringify(transactions));
-        }
-
-        // Update your existing functions to use the new storage methods
-        let transactions = getTransactions();
-
-        function updateTotalSummary() {
-            let totalInvested = 0;
-            let totalEnding = 0;
-            let totalProfitLoss = 0;
-            
-            transactions.forEach(transaction => {
-                totalInvested += transaction.investedAmount;
-                totalEnding += transaction.endingAmount;
-                totalProfitLoss += transaction.profitLoss;
-            });
-
-            const totalSummaryHTML = `
-                <div class="summary-box">
-                    <h3><i class="fas fa-chart-bar"></i> Overall Statistics</h3>
-                    <p><i class="fas fa-wallet"></i> Total Invested: ${totalInvested.toFixed(2)}</p>
-                    <p><i class="fas fa-money-bill-wave"></i> Total Returns: ${totalEnding.toFixed(2)}</p>
-                    <p><i class="fas fa-chart-line"></i> Net Profit/Loss: <span class="${totalProfitLoss >= 0 ? 'profit' : 'loss'}">${totalProfitLoss.toFixed(2)}</span></p>
-                    <p><i class="fas fa-percentage"></i> ROI: <span class="${totalProfitLoss >= 0 ? 'profit' : 'loss'}">${((totalProfitLoss/totalInvested) * 100).toFixed(2)}%</span></p>
-                </div>
-            `;
-            document.getElementById('totalSummary').innerHTML = totalSummaryHTML;
         }
 
         function displayTransactions(transactionsToShow) {
@@ -602,6 +582,7 @@
                     return;
                 }
 
+                const transactions = getTransactions();
                 const matchTransactions = transactions.filter(t => t.matchId === searchMatchId);
                 displayTransactions(matchTransactions);
             } catch (error) {
@@ -622,6 +603,7 @@
             const start = new Date(startDate);
             const end = new Date(endDate);
 
+            const transactions = getTransactions();
             const dateTransactions = transactions.filter(t => {
                 const transactionDate = new Date(t.transactionDate);
                 return transactionDate >= start && transactionDate <= end;
@@ -631,7 +613,7 @@
         }
 
         function viewAllTransactions() {
-            displayTransactions(transactions);
+            displayTransactions(getTransactions());
         }
 
         function deleteTransactionsByMatch() {
@@ -642,8 +624,9 @@
             }
 
             if (confirm(`Are you sure you want to delete all transactions for match ${matchId}?`)) {
-                transactions = transactions.filter(t => t.matchId !== matchId);
-                saveTransactions(transactions);
+                const transactions = getTransactions();
+                const filteredTransactions = transactions.filter(t => t.matchId !== matchId);
+                saveTransactions(filteredTransactions);
                 alert(`All transactions for match ${matchId} have been deleted.`);
                 document.getElementById('deleteMatchId').value = '';
                 viewAllTransactions();
@@ -653,8 +636,7 @@
 
         function deleteAllTransactions() {
             if (confirm('Are you sure you want to delete all transactions? This action cannot be undone.')) {
-                transactions = [];
-                saveTransactions(transactions);
+                saveTransactions([]);
                 alert('All transactions have been deleted.');
                 document.getElementById('transactionsTable').innerHTML = '<div class="card"><p>No transactions found.</p></div>';
                 document.getElementById('summary').innerHTML = '';
@@ -668,11 +650,43 @@
         // Call this when the page loads
         updateTotalSummary();
 
-        // Logout function
-        function logout() {
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('currentUserEmail');
-            window.location.href = 'login.html';
+        function updateTotalSummary() {
+            const transactions = getTransactions();
+            let totalInvested = 0;
+            let totalEnding = 0;
+            let totalProfitLoss = 0;
+            
+            transactions.forEach(transaction => {
+                totalInvested += transaction.investedAmount;
+                totalEnding += transaction.endingAmount;
+                totalProfitLoss += transaction.profitLoss;
+            });
+
+            const totalSummaryHTML = `
+                <div class="summary-box">
+                    <h3><i class="fas fa-chart-bar"></i> Overall Statistics</h3>
+                    <p><i class="fas fa-wallet"></i> Total Invested: ${totalInvested.toFixed(2)}</p>
+                    <p><i class="fas fa-money-bill-wave"></i> Total Returns: ${totalEnding.toFixed(2)}</p>
+                    <p><i class="fas fa-chart-line"></i> Net Profit/Loss: <span class="${totalProfitLoss >= 0 ? 'profit' : 'loss'}">${totalProfitLoss.toFixed(2)}</span></p>
+                    <p><i class="fas fa-percentage"></i> ROI: <span class="${totalProfitLoss >= 0 ? 'profit' : 'loss'}">${((totalProfitLoss/totalInvested) * 100).toFixed(2)}%</span></p>
+                </div>
+            `;
+            document.getElementById('totalSummary').innerHTML = totalSummaryHTML;
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = message;
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success-message');
+            successDiv.style.display = 'block';
+            successDiv.textContent = message;
         }
     </script>
 </body>
